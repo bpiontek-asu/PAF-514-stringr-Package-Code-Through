@@ -1,0 +1,172 @@
+---
+title: "Use of stringr for Basic Sentiment Analysis"
+author: "Beth Piontek"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: journal
+    df_print: paged
+    highlight: tango
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(pander)
+```
+
+# Introduction
+
+This tutorial explores how to use the [stringr package](https://cran.r-project.org/web/packages/stringr/index.html) in R. Specifically, it will demonstrate how a few of the functions from the package can be used to prepare data for and to perform basic sentiment analysis.
+
+## Why stringr?
+
+Most data analysis being performed in R or R Studio assumes a basic working knowledge of the [tidyverse set of packages](https://cran.r-project.org/web/packages/tidyverse/index.html), including stringr. Without a working understanding of the function of this package, it can be very difficult to do more complex tasks with R.
+<br>
+<br>
+In addition, anyone who works with survey data is probably familiar with the difficulty of working through survey comments, as opposed to categorical or numeric data. Understanding how to use stringr can make that task more manageable. 
+
+# Loading stringr and Loading Data
+
+## Loading stringr
+
+Because stringr is part of the tidyverse, the most common and efficient way to load the package is to access the entire tidyverse with the following code.
+
+```{r, eval=FALSE}
+# Load the tidyverse
+library(tidyverse)
+```
+
+If, for some reason, you prefer to use stringr without the rest of the tidyverse, you can always use the library function to load it as a stand-alone package as well.
+
+```{r, eval=FALSE}
+# Load Only dplyr
+library(stringr)
+```
+
+In either case, use the following code to install the package(s) before loading the libraries, if you don't already have them installed.
+
+```{r, eval=FALSE}
+# Installing the tidyverse
+install.packages("tidyverse")
+
+# OR
+
+# Installing Only stringr
+install.packages("stringr")
+```
+
+## Loading the Data
+
+In my professional life, I plan to use stringr largely for looking at course evaluation data and student satisfaction data for the college where I work in order to identify patterns and understand results. However, because that data is private, we will look instead at the [Sentiment Analysis for Mental Health dataset available on Kaggle](https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health?resource=download&select=Combined+Data.csv), which bears a slight resemblance to the student mental health survey data I look at annually. 
+<br>
+<br>
+From the Kaggle page, I am able to download the sentiment data as a .csv file, save to a preferred location on my computer, and manually load it to R. The code below reflects that the .rmd file I'm working in and the .csv file with the data are saved to the same location. 
+
+```{r}
+# Define Dataset
+dat <- read.csv("Mental Health Sentiments.csv")
+```
+
+The Mental Health Sentiment Data is fairly strightforward. It contains many entries (over 50,000), each as a row, but each row contains only three columns: "X", a unique identifier assigned to each response; "statement", freeform text typed in by the respondent; and "status", the respondent's selected mental health concern. The general format of the data can be reviewed by using the "head()" function. 
+
+``` {r}
+# Look at the Dataset
+head(dat) 
+```
+
+# Using the stringr Package Functions
+
+## Preparing the Data
+
+One common issue in the open comments of surveys is that different people write very differently. In the same set of comments you might see all capital letters, no capital letters, sentence case, title case, one space after punctuation, two spaces after punctuation, line breaks after punctuation, etc. Cleaning text up so that comments are consistent with one another is one way to help alleviate the issues that these differences may present.
+
+### str_to_lower()
+
+Because respondents often capitalize (or don't) their comments differently, one way to make them consistent is to change all text to lower case via the "str_to_lower()" function (making all of the text upper case or title case are also options, and the functions that do that work the same way). 
+<br>
+<br>
+To use this function, call the specifc column you want to apply it to by using the syntax "dataframe_name $ column_name <- function_name( dataframe)_name $ column_name )" which will indicate that you are replacing the current content of the column with the new version which, in this case, contains only lowercase text. 
+<br>
+<br>
+Using the "head()" function will allow you to validate that your updated dataframe appears the way you expect it to. 
+
+```{r}
+# Demonstrate the str_to_lower() Function
+dat$statement <- str_to_lower(dat$statement)
+head(dat)
+```
+
+### str_squish()
+
+The "str_squish()" function can be used to remove excess spaces from entries. It is like the "str_trim()" function in that it removes whitespace from the start and/or end of a string, and it also removes excess spaces within the string (for instance, if a respondent left two or more spaces between words, they will be reduced to a single space).
+<br>
+<br>
+In terms of the syntax for the use of this function, it works in exactly the same way that the "str_to_lower()" function did.
+
+```{r}
+# Demonstrate the str_squish() Function
+dat$statement <- str_squish(dat$statement)
+head(dat)
+```
+
+## Basic Sentiment Analysis
+
+Once the data has been formatted in the way that you prefer, using functions like "str_to_lower()" or "str_squish()" and others, sentiment analysis can begin. 
+<br>
+<br>
+If I was looking at student mental health survey results at work, one thing that I might want to look at would be how many students mention, for instance, the name of the college's mental health services provider. Because the example data set we're using here doesn't include that sort of information, I'll instead demonstrate the process I would use to find mentions by looking instead for a specific word.
+
+### Turn Column Into List
+
+The first step in doing this is to turn the "statement" column into a list of unique words, which can be done using the following code (not part of the stringr package).
+
+```{r}
+# Turn the Statement Column Into a Word List
+statement_word_list <- dat$statement %>% strsplit(" ") %>% unlist() 
+
+print(statement_word_list %>% head(20))
+```
+### str_remove_all()
+
+Once the column in question has been turned into a list of words, you'll notice that some words include punctuation marks, which we don't want (because "restless." and "restless" are the same word, and should appear that way in the list). To do this we can use the "str_remove_all()" function in much the same say that we did the "str_to_lower()" or "str_squish()" functions, except that it must be applied to a list (which we've prepared as the "statement_word_list") and not a column in the data frame, and also that it must include the details of what exactly is being removed (in this case, punctution, defined as the RegEx statement "[:punct:]).
+
+```{r}
+# Demonstrate str_remove_all() Function
+statement_word_list <- str_remove_all(statement_word_list, "[[:punct:]]")
+
+print(statement_word_list %>% head(20))
+```
+
+### str_count()
+
+With our list of words prepared, we can finally look for the number of instances of the word (or phrase) we're interested in, using the str_count() function and applying it to our word list, while specifying the word we're interested in.
+<br>
+<br>
+To prevent our output from appearing as just a list of 0s and 1s, we will want to look for the sum of the instances found by the str_count() function, using the following code.
+
+```{r}
+# Demonstrate str_locate() Function
+sum(str_count(statement_word_list, "restless"))
+```
+
+<br>
+<br>
+
+# Works Cited
+
+This tutorial references and/or cites the following sources:
+
+* Comprehensive R Archive Network (CRAN). (n.d.). *tidyverse: Easily Install and Load the 'Tidyverse'.* [CRAN](https://cran.r-project.org/web/packages/tidyverse/index.html)
+
+* Comprehensive R Archive Network (CRAN). (n.d.). *stringr: Simple, Consistent Wrappers for Common String Operations* [CRAN](https://cran.r-project.org/package=stringr)
+
+* *stringr* (n.d.). [tidyverse.org](https://stringr.tidyverse.org/)
+
+* *Sentiment Analysis for Mental Health* (n.d.). [Kaggle](https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health?resource=download&select=Combined+Data.csv)
+
+<br>
+<br>
